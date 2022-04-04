@@ -196,3 +196,151 @@ db.companies.countDocuments({
   ],
 });
 ```
+
+### Aggregate
+
+#### group
+
+- divide the data into smaller groups
+  - sum min, max, avg...
+  - https://www.mongodb.com/docs/manual/reference/operator/aggregation/group/
+
+```js
+//group by status and count how many books each status has
+db.books.aggregate([
+  {
+    $group: {
+      _id: "$status", //field to group by
+      //name of the new field
+      number_Of_Books: { $sum: "$pageCount" }, //add one to each group
+    },
+  },
+]);
+```
+
+#### match
+
+- **in aggregate we cant do a find, we can only do a match**
+
+- filter out books with 0 pageCount
+- group by status and count how many books each status has
+
+```js
+db.books.aggregate([
+  {
+    $match: {
+      pageCount: { $gt: 0 },
+    },
+  }
+  {
+    $group: {
+      _id: "$status",
+      number_of_books: { $sum: 1 },
+      avg_books_pages: { $avg: "$pageCount" },
+      total_pages: { $sum: "$pageCount" },
+      min_pages: { $min: "$pageCount" },
+      max_pages: { $max: "$pageCount" },
+    },
+  },
+]);
+```
+
+#### sort
+
+- sort the results by a field
+- used with 1 or -1
+  - 1: ascending
+  - -1: descending
+
+```js
+db.books.aggregate([
+  {
+    $match: {
+      pageCount: { $gt: 0 },
+    },
+  }
+  {
+    $group: {
+      _id: "$status",
+      number_of_books: { $sum: 1 },
+      avg_books_pages: { $avg: "$pageCount" },
+      total_pages: { $sum: "$pageCount" },
+      min_pages: { $min: "$pageCount" },
+      max_pages: { $max: "$pageCount" },
+    },
+  },
+  {
+    $sort: {
+      _id: 1,
+    },
+  },
+]);
+```
+
+#### project
+
+- show only the fields that we want
+
+  - `concat` = to join two fields
+    - `toUpper` = toUpperCase the field
+    - `substrCP:[from where to take, where to start, how much to move forward]` = toUpperCase the field and take the letters we want
+    - `strlenCP:string value` = show the amount of letters in the field
+    - `subtract:[the value we subtract, how much we want]` = subtract the field from the other field
+  - `convert:{input, what to convert to, onError(optional), onNull(optional)}`- this command is used to convert the field to a chosen type
+    - https://www.mongodb.com/docs/manual/reference/operator/aggregation/convert/
+
+- concat the first name and the last name and upper case only the first letter
+
+```javaScript
+db.users.aggregate([
+  {
+    $project: {
+      _id: 0,
+      fullname: {
+        $concat: [
+          { $toUpper: { $substrCP: ["$firstname", 0, 1] } },
+          {
+            $substrCP: [
+              "$firstname",
+              1,
+              {
+                $subtract: [{ $strLenCP: "$firstname" }, 1],
+              },
+            ],
+          },
+          " ",
+          { $toUpper: { $substrCP: ["$lastname", 0, 1] } },
+          {
+            $substrCP: [
+              "$lastname",
+              1,
+              {
+                $subtract: [{ $strLenCP: "$lastname" }, 1],
+              },
+            ],
+          },
+        ],
+      },
+      email: 1,
+    },
+  },
+]);
+```
+
+#### unwind
+
+- distract the array into multiple documents
+- `$push` = put all the values in the array into a new field (with doubles)
+- `$addToSet` = add the value to the array if it is not already in the array
+- `$size` = show the amount of items in the array
+- `$slice:[from what array, where to start, how much]` = show the items in the array in a chosen range
+
+#### year
+
+- pulling a year from a date
+
+#### out
+
+- create new collection from the results
+- `$out:name of the new collection`
+- https://www.mongodb.com/docs/manual/reference/operator/aggregation/out/
